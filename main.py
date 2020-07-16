@@ -1,11 +1,11 @@
 import discord
-from classes import Json, Utils
+from classes import Json
 from controllers import Dice, Event, Player
 import sqlite3
 from typing import Tuple
 
 
-class Club(Utils.KSingleton):
+class Club(object):
     def __init__(self, guild: discord.Guild):
         self.key = str(guild.id)
         self.local = "private/clubs/"

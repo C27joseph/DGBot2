@@ -1,12 +1,63 @@
 import discord
 import sqlite3
+from typing import Union
 from classes import Utils
 from controllers import Event
 
 
+# Ultimos testes:
+# new player 100%
+# del player 100%
+# new bar 100%
+# del bar 100%
+# add bar 100%
+# remove bar
+
+# EXCEPTIONS
+
+
+class UserIsNotAPlayer(Exception):
+    def __init__(self, message, user):
+        self.message = message
+        self.user = user
+
+# CLASSES
+
+
 class Bar(object):
     def __init__(self, min_value: int, max_value: int, cur_value: int):
-        pass
+        self.min_value = int(min_value)
+        self.max_value = int(max_value)
+        self.cur_value = int(cur_value)
+        self.edited = False
+
+    def __add__(self, other):
+        value = self.cur_value + other
+        value = Utils.clamp(value, self.min_value, self.max_value)
+        bar = Bar(self.min_value, self.max_value, value)
+        bar.edited = True
+        return bar
+
+    def __sub__(self, other):
+        value = self.cur_value - other
+        value = Utils.clamp(value, self.min_value, self.max_value)
+        bar = Bar(self.min_value, self.max_value, value)
+        bar.edited = True
+        return bar
+
+    def __mul__(self, other):
+        value = self.cur_value * other
+        value = Utils.clamp(value, self.min_value, self.max_value)
+        bar = Bar(self.min_value, self.max_value, value)
+        bar.edited = True
+        return bar
+
+    def __truediv__(self, other):
+        value = self.cur_value / other
+        value = Utils.clamp(value, self.min_value, self.max_value)
+        bar = Bar(self.min_value, self.max_value, value)
+        bar.edited = True
+        return bar
 
 
 class BarElement(object):
@@ -14,6 +65,7 @@ class BarElement(object):
         self.title = title
         self.aliases = aliases
         self.description = description
+        self.edited = False
         pass
 
 
@@ -30,7 +82,7 @@ class Player(object):
 
     def __load_bar__(self):
         self.c.execute(
-            f"""SELECT * FROM PC_player_bar_list WHERE owner={self.key}""")
+            f"""SELECT * FROM PC_player_bar_list WHERE key={self.key}""")
         bars = self.c.fetchall()
         self.bars = Utils.AliaseDict()
         for key, title, aliases, mv, mv, cv in bars:
@@ -62,7 +114,8 @@ class Controller(Utils.TableController):
         # BAR ELEMENT LIST
         self.create_table(
             "PC_bar_elements",
-            "title text PRIMARY KEY, aliases text, description text")
+            "name text PRIMARY KEY, title text, aliases text, description text"
+        )
         # PLAYER BARS LIST
         self.create_table(
             "PC_player_bar_list",
@@ -78,7 +131,7 @@ class Controller(Utils.TableController):
         # LOADING BAR TABLE
         self.bars = Utils.AliaseDict()
         bars = self.get_all_from_table("PC_bar_elements")
-        for title, aliases, description in bars:
+        for name, title, aliases, description in bars:
             aliases = aliases.split('/')
             self.bars[(title, aliases)] = BarElement(
                 title, aliases, description)
@@ -91,10 +144,10 @@ class Controller(Utils.TableController):
         return self.conn, self.c
 
     def isPlayer(self, user):
-        key = user.id
+        key = str(user.id)
         return key in self.accepted_players
 
-    def Player(self, user):
+    def Player(self, user) -> (Union[Player, None]):
         key = str(user.id)
         if not (key in self.accepted_players):
             return None
@@ -102,13 +155,21 @@ class Controller(Utils.TableController):
             self.players[key] = Player(self.master, user)
         return self.players[key]
 
+    def get_first_player_mention(self, ctx: Event.Context):
+        user = ctx.message.mentions[0]
+        player = self.Player(user)
+        if not player:
+            raise UserIsNotAPlayer(
+                f"User {user.name}:{user.id} is not a player", user)
+        return player
+
     async def new_player(self, ctx: Event.Context):
         try:
             user = ctx.message.mentions[0]
-            if self.isPlayer(user):
-                print("Este player ja foi adicionado")
-                return False
             key = str(user.id)
+            if self.isPlayer(user):
+                print("Usuario já é um player")
+                return False
         except IndexError:
             print("Player não informado")
             return False
@@ -119,15 +180,21 @@ class Controller(Utils.TableController):
         # MENSAGEM DE SUCESSO
 
     async def del_player(self, ctx: Event.Context):
-        user = ctx.message.mentions[0]
-        if not self.isPlayer(user):
-            print("Este usuario não é player")
+        try:
+            player = self.get_first_player_mention(ctx)
+        except IndexError:
+            print("Player não informado")
             return False
-        key = str(user.id)
+        except UserIsNotAPlayer:
+            print("User não é um player")
+            return False
         self.connect()
-        self.delete_from_table("PC_accepted_players", f"WHERE key={key}")
+        self.delete_from_table("PC_accepted_players",
+                               f"WHERE key={player.key}")
         self.conn.close()
-        self.accepted_players.remove(key)
+        self.accepted_players.remove(player.key)
+        print("SUCESSO")
+        return True
 
     async def new_bar(self, ctx: Event.Context):
         try:
@@ -137,13 +204,15 @@ class Controller(Utils.TableController):
                 return False
             aliases = ctx.args[1:]
             description = ctx.comment
+            name = Utils.getKey(title)
         except IndexError:
             print("argumentos mal informados")
             return False
         self.connect()
         self.insert_into_table(
-            "PC_bar_elements", "title, aliases, description",
-            [title, "/".join(aliases), description])
+            "PC_bar_elements",
+            "name, title, aliases, description",
+            [name, title, "/".join(aliases), description])
         self.conn.close()
         self.bars[(title, aliases)] = BarElement(
             title, aliases, description)
@@ -154,26 +223,26 @@ class Controller(Utils.TableController):
     async def del_bar(self, ctx: Event.Context):
         title = " ".join(ctx.args)
         if not self.bars.exist(title):
-            print("Barra inexistente existente")
+            print("Barra inexistente")
             return False
-        title = self.bars.key(title)
+        name = self.bars.key(title)
         self.connect()
-        self.delete_from_table("PC_bar_elements", f"WHERE title={title}")
+        self.delete_from_table("PC_bar_elements", f"WHERE name='{name}'")
         self.conn.close()
+        del self.bars[name]
         pass
 
     async def add_bar(self, ctx: Event.Context):
-        # recebendo o titulo e vendo se existe
+        # Recebendo player como primeiro argumento
         try:
-            user = ctx.message.mentions[0]
-            key = str(user.id)
-            player = self.Player(user)
-            if not player:
-                print("User não é um jogador")
-                return False
+            player = self.get_first_player_mention(ctx)
+        except UserIsNotAPlayer:
+            print("User não é um player.")
+            return False
         except IndexError:
             print("User não informado, 1° Argumento")
             return False
+        # Recebendo titulo da barra como segundo argumento
         try:
             title = ctx.args[1]
             title = self.bars.key(title)
@@ -205,19 +274,43 @@ class Controller(Utils.TableController):
         except Exception:
             cur_value = max_value
 
-        # conectando e adionando a database
-        self.conn, self.c = self.master.connect()
-        self.c.execute(
-            """INSERT INTO p_bar_list
-                    (owner, title, aliases, min_value, max_value, cur_value)
-                VALUES(?, ?, ?, ?, ?, ?)
-            """,
-            [key, title, "/".join(aliases), min_value, max_value, cur_value])
+        self.connect()
+        self.insert_into_table(
+            "PC_player_bar_list",
+            "key, title, aliases, min_value, max_value, cur_value",
+            [player.key, title, "/".join(aliases),
+             min_value, max_value, cur_value])
+        self.conn.close()
         player.bars[(title, aliases)] = Bar(
             int(min_value), int(max_value), int(cur_value))
-        self.conn.commit()
-        self.conn.close()
         # MENSAGEM DE SUCESSO
+        print("SUCESSO")
 
     async def rmv_bar(self, ctx: Event.Context):
-        pass
+        try:
+            player = self.get_first_player_mention(ctx)
+        except UserIsNotAPlayer:
+            print("User não é um player")
+            return False
+        except IndexError:
+            print("User não informado, 1° Argumento")
+            return False
+        try:
+            name = " ".join(ctx.args[1:])
+            title = player.bars.key(name)
+            del player.bars[title]
+        except IndexError:
+            print("Titulo não informado, 2° Argumento")
+            return False
+        except KeyError:
+            print("Barra Inexistente")
+            return False
+        self.connect()
+        self.delete_from_table(
+            "PC_player_bar_list",
+            f"WHERE key='{player.key}' AND title='{title}'")
+        self.conn.close()
+
+        # sucesso
+        print("SUCESSO!")
+        return True

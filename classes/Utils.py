@@ -11,6 +11,14 @@ class NoTableError(Exception):
 # FUNCTIONS
 
 
+def clamp(value, vmin, vmax):
+    if value < vmin:
+        value = vmin
+    elif value > vmax:
+        value = vmax
+    return vmin
+
+
 def getKey(name: str) -> (str):
     return unidecode(str.lower(name))
 
@@ -51,14 +59,22 @@ class AliaseDict(dict):
         return self.__aliases__[key]
 
     def exist(self, name):
-        key = getKey(name)
-        return self.__aliases__.__contains__(key)
+        try:
+            key = self.__aliases__[getKey(name)]
+            return self.__contains__(key)
+        except KeyError:
+            return False
 
     def __getitem__(self, name):
         key: str = getKey(name)
         print("aliases, ", self.__aliases__)
         key = self.__aliases__[key]
         return super().__getitem__(key)
+
+    def __delitem__(self, name):
+        key = self.__aliases__[getKey(name)]
+        del self.__backup__[key]
+        return super().__delitem__(key)
 
 
 class TableController(object):
