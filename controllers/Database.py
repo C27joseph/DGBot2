@@ -18,6 +18,14 @@ class ElementAlreadyExists(Exception):
         self.message = message
         self.name = name
 
+class ElementNotExists(Exception):
+    """Exceção em casos de tentativa de criar uma barra que já existe
+
+    """
+
+    def __init__(self, message, name):
+        self.message = message
+        self.name = name
 
 class TableController(object):
     def set_db(self, db: str):
@@ -123,8 +131,16 @@ class ElmRef(TableController, Utils.AliaseDict):
     def update(self):
         pass
 
-    def delete(self):
-        pass
+
+    def delete(self, title):
+        key = Utils.getKey(title)
+        if not self.exist(key):
+            ElementNotExists("Element not exist", key)
+            return False
+        del self[key]
+        self.delete_from_table(self.elm_table,
+                               "WHERE key={key}")
+        return True
 
     def new(self, title, aliases, description):
         key = Utils.getKey(title)

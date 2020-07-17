@@ -187,7 +187,7 @@ class Controller(Database.TableController, dict):
         finally:
             self.conn.close()
 
-    async def new(self, ctx: Event.Context) -> (bool):
+    async def new_elm(self, ctx: Event.Context) -> (bool):
         """Cria uma novo elemento, um Elemento simples para Vitrine
 
         Args:
@@ -224,27 +224,33 @@ class Controller(Database.TableController, dict):
             self.conn.close()
         # MENSAGEM DE SUCESSO
 
-    async def del_bar(self, ctx: Event.Context) -> (bool):
-        pass
-        # """[Deleta um Elemento Barra]
+    async def del_elm(self, ctx: Event.Context) -> (bool):
+        """Deleta um elemento de uma vitrine existente,
+        não apaga os elementos dos jogadores.
 
-        # Args:
-        #     ctx (Event.Context): [Contexto local]
-
-        # Returns:
-        #     [bool]: [True se a barra foi deletada]
-        # """
-        # title = " ".join(ctx.args)
-        # if not self.bars.exist(title):
-        #     print("Barra inexistente")
-        #     return False
-        # name = self.bars.key(title)
-        # self.connect()
-        # self.delete_from_table("PC_bar_elements", f"WHERE name='{name}'")
-        # self.conn.close()
-        # del self.bars[name]
-        # return True
-
+        Args:
+            self ([type]): [description]
+        """
+        try:
+            lib = ctx.args[0]
+            elm = ctx.args[1:]
+        except IndexError:
+            print("Informe os elementos corretamente")
+            return False
+        try:
+            elm_lib = self[lib]
+        except KeyError:
+            print("elm_lib does not exist")
+            return False
+        try:
+            self.connect()
+            elm_lib.delete(title)
+            return True
+        except KeyError:
+            print("elm not exist")
+            return False
+        finally:
+            self.conn.close()
     async def add_bar(self, ctx: Event.Context) -> (bool):
         pass
         # """[Adiciona um Elemento barra existente a um player]
