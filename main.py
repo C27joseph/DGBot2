@@ -10,8 +10,9 @@ class Club(object):
         self.key = str(guild.id)
         self.local = "private/clubs/"
         self.guild: discord.Guild = guild
+        self.db = f"{self.local}{self.key}.db"
 
-        self.conn, self.c = self.connect()
+        self.connect()
 
         self.dc = Dice.Controller(self)
         self.pc = Player.Controller(self)
@@ -22,9 +23,9 @@ class Club(object):
         ]
 
     def connect(self) -> (Tuple[sqlite3.Connection, sqlite3.Cursor]):
-        conn = sqlite3.connect(f"{self.local}{self.key}.db")
-        c = conn.cursor()
-        return conn, c
+        self.conn = sqlite3.connect(self.db)
+        self.c = self.conn.cursor()
+        return self.conn, self.c
 
     async def on_message(self, ctx: Event.Context):
         if ctx.isCommand:

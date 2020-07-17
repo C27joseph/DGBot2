@@ -1,15 +1,7 @@
 from unidecode import unidecode
-import sqlite3
 
-# EXEPTIONS
-
-
-class NoTableError(Exception):
-    def __init__(self, table_name):
-        self.table_name = table_name
 
 # FUNCTIONS
-
 
 def clamp(value, vmin, vmax):
     if value < vmin:
@@ -75,59 +67,3 @@ class AliaseDict(dict):
         key = self.__aliases__[getKey(name)]
         del self.__backup__[key]
         return super().__delitem__(key)
-
-
-class TableController(object):
-    def connect(self, db: str):
-        self.conn = sqlite3.connect(db)
-        self.c = self.conn.cursor()
-        return self.conn, self.c
-
-    def exist_table(self, table_name: str):
-        self.c.execute(
-            f"""SELECT count(name) FROM sqlite_master
-            WHERE type='table' AND name='{table_name}'""")
-        if self.c.fetchone()[0] == 1:
-            return True
-        return False
-
-    def create_table(self, table_name: str, columns: str):
-        self.c.execute(
-            f"""CREATE TABLE IF NOT EXISTS {table_name}
-            (
-                {columns}
-            )
-            """
-        )
-        self.conn.commit()
-
-    def drop_table(self, table_name: str):
-        if self.exist_table(table_name):
-            self.c.execute(
-                f"""DROP TABLE {table_name}
-                """)
-            return True
-        raise NoTableError(table_name)
-
-    def insert_into_table(self, table_name: str, columns: str, values: list):
-        v = []
-        for value in values:
-            v.append(f"'{value}'")
-        s_values = ", ".join(v)
-        self.c.execute(
-            f"""INSERT OR REPLACE INTO {table_name}
-                    ({columns})
-                VALUES
-                    ({s_values})
-            """)
-        self.conn.commit()
-
-    def get_all_from_table(self, table_name, condition=""):
-        self.c.execute(f"""SELECT * FROM {table_name} {condition}""")
-        return self.c.fetchall()
-
-    def delete_from_table(self, table_name, condition):
-        self.c.execute(
-            f"""DELETE FROM {table_name}
-            {condition}""")
-        self.conn.commit()
