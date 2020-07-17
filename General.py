@@ -1,5 +1,7 @@
 from classes import Utils
 from controllers import Event, Database
+from typing import Optional, Tuple
+import discord
 
 
 # Ultimos testes:
@@ -69,35 +71,41 @@ class Bar(object):
         return bar
 
 
-class Bars(object):
-    def __init__(self, title, aliases, description):
-        self.title = title
-        self.aliases = aliases
-        self.description = description
-        self.edited = False
-        pass
+class Player(object):
+    def __init__(self, club, user):
+        self.club = club
+        self.user = user
+        self.key = str(user.id)
+        super().__init__()
 
 
 class Controller(Database.TableController, dict):
-    def __init__(self, club):
+    """Controle de player e suas funções
+
+
+    Args:
+        [Club]: Um objeto Club como referencia de db e strings
+    """
+
+    def __init__(self):
         super().__init__()
         print("Player Controller -> new")
-        self.club = club
-        self.db = club.db
+
+        # SETTING THE PLAYER LIST AND ACCEPTEDS
         self.accepted_players = []
         self.players = {}
 
+        # SETTING THE COMMANDS
         self.commands = {
-            # "new player": self.new_player,
-            # "del player": self.del_player,
+            # "add player": self.new_player,
+            # "rmv player": self.del_player,
             # "new bar": self.new_bar,
             # "del bar": self.del_bar,
             # "add bar": self.add_bar,
             # "rmv bar": self.rmv_bar
         }
-        # CREATING IF NOT EXIST TABLE
         self.connect()
-        # ACCEPTED PLAYER LIST
+        # ACCEPTED PLAYER TABLE
         self.create_table(
             "PC_accepted_players",
             "key text PRIMARY KEY")
@@ -106,46 +114,48 @@ class Controller(Database.TableController, dict):
         acp = self.get_all_from_table("PC_accepted_players")
         self.accepted_players = map(lambda i: i[0], acp)
 
+        # CREATING BAR ELEMENT
         self['bar'] = Database.ElmRef(
             self.db,
             "bar",
             ref="min_value integer, max_value integer, cur_value integer")
+        # CREATING ATTRIBUTE ELEMENT
         self['attribute'] = Database.ElmRef(
             self.db,
             "attribute",
             ref="value integer")
-        # LOADING BAR TABLE
+        # close the db
         self.conn.close()
 
-    # def isPlayer(self, user: discord.User) -> (bool):
-    #     """[Verifica no registro se o usuario
-    # informado é um player já aceito]
+    def isPlayer(self, user: discord.User) -> (bool):
+        """ Verifica no registro se o usuario
+            informado é um player já aceito
 
-    #     Args:
-    #         user ([discord.User]): [Um usuario do discord]
+        Args:
+            user ([discord.User]): Um usuario do discord
 
-    #     Returns:
-    #         [bool]: [um bool, true se for um player]
-    #     """
-    #     key = str(user.id)
-    #     return key in self.accepted_players
+        Returns:
+            [bool]: [um bool, true se for um player]
+        """
+        key = str(user.id)
+        return key in self.accepted_players
 
-    # def Player(self, user: discord.User) -> (Optional[Player]):
-    #     """[Cria uma instancia do player referente ao ususuario informado]
+    def Player(self, user: discord.User) -> (Optional[Player]):
+        """Cria uma instancia do player referente ao ususuario informado
 
-    #     Args:
-    #         user ([discord.User]): [Usuario do discord em questão]
+        Args:
+            user ([discord.User]): [Usuario do discord em questão]
 
-    #     Returns:
-    #         [Player]: [O usuario referente ao user, ou None caso o player não
-    #          tiver sido aceito]
-    #     """
-    #     key = str(user.id)
-    #     if not (key in self.accepted_players):
-    #         return None
-    #     if not (key in self.players):
-    #         self.players[key] = Player(self.master, user)
-    #     return self.players[key]
+        Returns:
+            [Player]: [O usuario referente ao user, ou None caso o player não
+             tiver sido aceito]
+        """
+        key = str(user.id)
+        if not (key in self.accepted_players):
+            return None
+        if not (key in self.players):
+            self.players[key] = Player(self, user)
+        return self.players[key]
 
     def get_first_player_mention(self, ctx: Event.Context):
         """[Pega o primeiro usuario informado no contexto e devolve o Player referente]
@@ -169,78 +179,75 @@ class Controller(Database.TableController, dict):
         return player
 
     async def new_player(self, ctx: Event.Context) -> (bool):
-        pass
-        # """Define um User como um palyer aceito
+        """Define um User como um palyer aceito
 
-        # Args:
-        #     ctx (Event.Context): [Contexto local]
+        Args:
+            ctx (Event.Context): [Contexto local]
 
-        # Returns:
-        #     [bool]: [True para operação bem sucedida]
-        # """
-        # try:
-        #     user = ctx.message.mentions[0]
-        #     key = str(user.id)
-        #     if self.isPlayer(user):
-        #         print("Usuario já é um player")
-        #         return False
-        # except IndexError:
-        #     print("Player não informado")
-        #     return False
-        # self.connect()
-        # self.insert_into_table("PC_accepted_players", "key", [key])
-        # self.conn.close()
-        # self.accepted_players.append(key)
-        # return True
-        # # MENSAGEM DE SUCESSO
+        Returns:
+            [bool]: [True para operação bem sucedida]
+        """
+        try:
+            user = ctx.message.mentions[0]
+            key = str(user.id)
+        except IndexError:
+            print("Player não informado")
+            return False
+        if self.isPlayer(user):
+            print("Usuario já é um player")
+            return False
+        self.connect()
+        self.insert_into_table("PC_accepted_players", "key", [key])
+        self.conn.close()
+        self.accepted_players.append(key)
+        return True
+        # MENSAGEM DE SUCESSO
 
     async def del_player(self, ctx: Event.Context) -> (bool):
-        pass
-        # """Remove um player dos players aceitos
+        """Remove um player dos players aceitos
 
-        # Args:
-        #     ctx (Event.Context): [Contexto local]
+        Args:
+            ctx (Event.Context): [Contexto local]
 
-        # Returns:
-        #     [bool]: [True se o player existe e foi deletado]
-        # """
-        # try:
-        #     player = self.get_first_player_mention(ctx)
-        # except IndexError:
-        #     print("Player não informado")
-        #     return False
-        # except UserIsNotAPlayer:
-        #     print("User não é um player")
-        #     return False
-        # self.connect()
-        # self.delete_from_table("PC_accepted_players",
-        #                        f"WHERE key={player.key}")
-        # self.conn.close()
-        # self.accepted_players.remove(player.key)
-        # print("SUCESSO")
-        # return True
+        Returns:
+            [bool]: [True se o player existe e foi deletado]
+        """
+        try:
+            player = self.get_first_player_mention(ctx)
+        except IndexError:
+            print("Player não informado")
+            return False
+        except UserIsNotAPlayer:
+            print("User não é um player")
+            return False
+        self.connect()
+        self.delete_from_table("PC_accepted_players",
+                               f"WHERE key={player.key}")
+        self.conn.close()
+        self.accepted_players.remove(player.key)
+        print("SUCESSO")
+        return True
 
-    async def new_bar(self, ctx: Event.Context) -> (bool):
-        pass
-        # """[Cria uma nova barra, um Elemento simples para Vitrine]
+    async def new(self, ctx: Event.Context) -> (bool):
+        """Cria uma novo elemento, um Elemento simples para Vitrine
 
-        # Args:
-        #     ctx (Event.Context): [Contexto local]
+        Args:
+            ctx (Event.Context): [Contexto local]
 
-        # Returns:
-        #     [bool]: [True se criou uma nova barra.]
-        # """
-        # try:
-        #     title = ctx.args[0]
-        #     aliases = ctx.args[1:]
-        #     description = ctx.comment
-        # except IndexError:
-        #     print("argumentos mal informados")
-        #     return False
-        # self.bar.new(title, aliases, description)
-        # # MENSAGEM DE SUCESSO
-        # print("SUCESSO!")
-        # return True
+        Returns:
+            [bool]: [True se criou uma nova barra.]
+        """
+        try:
+            title = ctx.args[0]
+            aliases = ctx.args[1:]
+            description = ctx.comment
+        except IndexError:
+            print("argumentos mal informados")
+            return False
+        self.bar.new(title, aliases, description)
+        # MENSAGEM DE SUCESSO
+        print("SUCESSO!")
+        return True
 
     async def del_bar(self, ctx: Event.Context) -> (bool):
         pass

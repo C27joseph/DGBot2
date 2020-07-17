@@ -90,7 +90,9 @@ class ElmRef(TableController, Utils.AliaseDict):
             self, db, table_name,
             elm="""key text PRIMARY KEY,
                     title text, aliases text, description text""",
-            ref=""):
+            elm_input="",
+            ref="",
+            ref_input=""):
         self.db = db
         self.connect()
         self.table_name = table_name
@@ -98,6 +100,8 @@ class ElmRef(TableController, Utils.AliaseDict):
         self.ref_table = table_name+"_ref"
         self.elm = elm
         self.ref = "key text, title text, aliases text, "+ref
+        self.elm_input = elm_input
+        self.rf_input = ref_input
         self.create_table(
             self.elm_table,
             self.elm)

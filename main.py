@@ -1,25 +1,23 @@
 import discord
 from classes import Json
-from controllers import Dice, Event, Player
+from controllers import Dice, Event
+import General
 import sqlite3
 from typing import Tuple
 
 
-class Club(object):
+class Club(General.Controller):
     def __init__(self, guild: discord.Guild):
         self.key = str(guild.id)
         self.local = "private/clubs/"
         self.guild: discord.Guild = guild
         self.db = f"{self.local}{self.key}.db"
 
-        self.connect()
-
         self.dc = Dice.Controller(self)
-        self.pc = Player.Controller(self)
+        super().__init__()
 
-        self.conn.close()
         self.controllers = [
-            self.dc, self.pc
+            self.dc
         ]
 
     def connect(self) -> (Tuple[sqlite3.Connection, sqlite3.Cursor]):
