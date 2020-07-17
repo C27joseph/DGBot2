@@ -136,3 +136,4 @@ class ElmRef(TableController, Utils.AliaseDict):
             [key, title, "/".join(aliases), description])
         self[(key, aliases)] = Element(
             title, aliases, description)
+        return True
