@@ -16,9 +16,6 @@ class Club(General.Controller):
         self.dc = Dice.Controller(self)
         super().__init__()
 
-        self.controllers = [
-            self.dc, self
-        ]
 
     def connect(self) -> (Tuple[sqlite3.Connection, sqlite3.Cursor]):
         self.conn = sqlite3.connect(self.db)
@@ -28,15 +25,14 @@ class Club(General.Controller):
     async def on_message(self, ctx: Event.Context):
         if ctx.isCommand:
             ctx.player = self.Player(ctx.message.author)
-            for controller in self.controllers:
-                for command, function in controller.commands.items():
-                    if ctx.content.startswith(command):
-                        ctx.setArgs(ctx.content[len(command):])
-                        print(f"command: {command}, used")
-                        success = await function(ctx)
-                        if not success:
-                            continue
-                        return True
+            for command, function in self.cmds.items():
+                if ctx.content.startswith(command):
+                    ctx.setArgs(ctx.content[len(command):])
+                    print(f"command: {command}, used")
+                    success = await function(ctx)
+                    if not success:
+                        continue
+                    return True
         elif ctx.isEvent:
             pass
         else:

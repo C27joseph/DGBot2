@@ -44,15 +44,6 @@ class Controller(Database.TableController, dict):
         self.accepted_players = []
         self.players = {}
 
-        # SETTING THE COMMANDS
-        self.commands = {
-            "add player": self.add_player,
-            "rmv player": self.rmv_player,
-            "new": self.new
-            # "del bar": self.del_bar,
-            # "add bar": self.add_bar,
-            # "rmv bar": self.rmv_bar
-        }
         self.connect()
         # ACCEPTED PLAYER TABLE
         self.create_table(
@@ -75,6 +66,16 @@ class Controller(Database.TableController, dict):
             ref="value integer")
         # close the db
         self.conn.close()
+
+        # SETTING THE COMMANDS
+        try:
+            self.cmds
+        except AttributeError:
+            self.cmds = {}
+        self.cmds['add player'] = self.add_player
+        self.cmds['rmv player'] = self.rmv_player
+        self.cmds['new'] = self.new_elm
+        self.cmds['del'] = self.del_elm
 
     def isPlayer(self, user: discord.User) -> (bool):
         """ Verifica no registro se o usuario
@@ -213,15 +214,17 @@ class Controller(Database.TableController, dict):
             return False
         #
         try:
-            self.connect()
+            elm_lib.connect()
             elm_lib.new(title, aliases, description)
             print("SUCESSO!")
+            self.conn.close()
             return True
         except Database.ElementAlreadyExists:
             print("Elemento já existe")
             return False
         finally:
-            self.conn.close()
+            elm_lib.conn.close()
+            
         # MENSAGEM DE SUCESSO
 
     async def del_elm(self, ctx: Event.Context) -> (bool):
@@ -243,112 +246,14 @@ class Controller(Database.TableController, dict):
             print("elm_lib does not exist")
             return False
         try:
-            self.connect()
+            elm_lib.connect()
             elm_lib.delete(title)
             return True
+        except Database.ElementNotExists:
+            print("elm not exist")
+            return False
         except KeyError:
             print("elm not exist")
             return False
         finally:
-            self.conn.close()
-    async def add_bar(self, ctx: Event.Context) -> (bool):
-        pass
-        # """[Adiciona um Elemento barra existente a um player]
-
-        # Args:
-        #     self ([type]): [description]
-
-        # Returns:
-        #     [bool]: [True se foi adicionado com sucesso]
-        # """
-        # # Recebendo player como primeiro argumento
-        # try:
-        #     player = self.get_first_player_mention(ctx)
-        # except UserIsNotAPlayer:
-        #     print("User não é um player.")
-        #     return False
-        # except IndexError:
-        #     print("User não informado, 1° Argumento")
-        #     return False
-        # # Recebendo titulo da barra como segundo argumento
-        # try:
-        #     title = ctx.args[1]
-        #     title = self.bars.key(title)
-        #     aliases = self.bars.aliases(title)
-        # except IndexError:
-        #     print("Titulo não informado, 2° Argumento")
-        #     return False
-        # except KeyError:
-        #     print("Barra Inexistente")
-        #     return False
-        # # VERIFICAR SE O PLAYER JÁ TEM A BARRA
-        # if player.bars.exist(title):
-        #     print("Player já tém esta barra")
-        #     return False
-        # # recebendo o user e os valores principais
-        # try:
-        #     min_value: str = ctx.args[2]
-        # except IndexError:
-        #     print("Valor minimo não informado, 3° Argumento")
-        #     return False
-        # try:
-        #     max_value: str = ctx.args[3]
-        # except IndexError:
-        #     print("Valor máximo não informado, 4° Argumento")
-        #     return False
-        # # recebendo valores opcionais
-        # try:
-        #     cur_value = ctx.args[4]
-        # except Exception:
-        #     cur_value = max_value
-
-        # self.connect()
-        # self.insert_into_table(
-        #     "PC_player_bar_list",
-        #     "key, title, aliases, min_value, max_value, cur_value",
-        #     [player.key, title, "/".join(aliases),
-        #      min_value, max_value, cur_value])
-        # self.conn.close()
-        # player.bars[(title, aliases)] = Bar(
-        #     int(min_value), int(max_value), int(cur_value))
-        # # MENSAGEM DE SUCESSO
-        # print("SUCESSO")
-        # return True
-
-    async def rmv_bar(self, ctx: Event.Context) -> (bool):
-        pass
-        # """Remove uma barra de algum player
-
-        # Args:
-        #     ctx (Event.Context): [Contexto local]
-
-        # Returns:
-        #     [bool]: [True se a barra foi removida com sucesso]
-        # """
-        # try:
-        #     player = self.get_first_player_mention(ctx)
-        # except UserIsNotAPlayer:
-        #     print("User não é um player")
-        #     return False
-        # except IndexError:
-        #     print("User não informado, 1° Argumento")
-        #     return False
-        # try:
-        #     name = " ".join(ctx.args[1:])
-        #     title = player.bars.key(name)
-        #     del player.bars[title]
-        # except IndexError:
-        #     print("Titulo não informado, 2° Argumento")
-        #     return False
-        # except KeyError:
-        #     print("Barra Inexistente")
-        #     return False
-        # self.connect()
-        # self.delete_from_table(
-        #     "PC_player_bar_list",
-        #     f"WHERE key='{player.key}' AND title='{title}'")
-        # self.conn.close()
-
-        # # sucesso
-        # print("SUCESSO!")
-        # return True
+            elm_lib.conn.close()
