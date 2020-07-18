@@ -232,7 +232,7 @@ class Controller(Database.TableController, dict):
         não apaga os elementos dos jogadores.
 
         Args:
-            self ([type]): [description]
+            ctx ([Event.Context]): [Contetxto local]
         """
         try:
             lib = ctx.args[0]
